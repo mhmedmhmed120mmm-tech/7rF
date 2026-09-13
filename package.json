@@ -1,6 +1,5 @@
 {
   "name": "7rf-app",
-  "main": "electron-main.cjs",
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.18",
@@ -48,5 +47,6 @@
     "windows": "electron .",
     "windows-build": "electron-builder --win --x64 --publish never"
   },
-  "private": true
+  "private": true,
+  "main": "expo-router/entry"
 }
