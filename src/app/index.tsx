@@ -1,98 +1,280 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const countries = [
+  { name: 'العراق', flag: '🇮🇶', users: 1284, rooms: 24 },
+  { name: 'السعودية', flag: '🇸🇦', users: 963, rooms: 18 },
+  { name: 'الكويت', flag: '🇰🇼', users: 721, rooms: 12 },
+  { name: 'الإمارات', flag: '🇦🇪', users: 615, rooms: 15 },
+  { name: 'الأردن', flag: '🇯🇴', users: 438, rooms: 9 },
+  { name: 'مصر', flag: '🇪🇬', users: 392, rooms: 11 },
+];
 
 export default function HomeScreen() {
+  const router = useRouter();
+
+  const openCountry = (country: string) => {
+    router.push({
+      pathname: '/country',
+      params: { country },
+    });
+  };
+
+  const openSupport = () => {
+    router.push('/support');
+  };
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <View style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+      >
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.logo}>7rF</Text>
+            <Text style={styles.welcome}>مرحباً بك في مجتمع 7rF</Text>
+          </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+          <TouchableOpacity style={styles.profileButton}>
+            <Text style={styles.profileIcon}>👤</Text>
+          </TouchableOpacity>
+        </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        <View style={styles.featured}>
+          <View>
+            <Text style={styles.featuredTitle}>الغرف المميزة</Text>
+            <Text style={styles.featuredSubtitle}>أفضل الغرف النشطة حالياً</Text>
+          </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+          <TouchableOpacity style={styles.roomButton}>
+            <Text style={styles.roomButtonText}>دخول</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>الدول</Text>
+
+        {countries.map((country) => (
+          <TouchableOpacity
+            key={country.name}
+            style={styles.countryCard}
+            activeOpacity={0.75}
+            onPress={() => openCountry(country.name)}
+          >
+            <Text style={styles.arrow}>‹</Text>
+
+            <View style={styles.countryInfo}>
+              <Text style={styles.countryName}>
+                {country.flag}  {country.name}
+              </Text>
+
+              <Text style={styles.stats}>
+                🟢 {country.users.toLocaleString()} متصل
+                {'   '} • {'   '}
+                {country.rooms} غرفة
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        <View style={styles.totalCard}>
+          <View style={styles.totalItem}>
+            <Text style={styles.totalNumber}>4,413</Text>
+            <Text style={styles.totalLabel}>مستخدم متصل</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.totalItem}>
+            <Text style={styles.totalNumber}>89</Text>
+            <Text style={styles.totalLabel}>غرفة نشطة</Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      <View style={styles.bottomBar}>
+        <TouchableOpacity style={styles.navItem}>
+          <Text style={styles.navIcon}>🌍</Text>
+          <Text style={styles.navActive}>الدول</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <Text style={styles.navIcon}>⭐</Text>
+          <Text style={styles.navText}>المفضلة</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem}>
+          <Text style={styles.navIcon}>🔍</Text>
+          <Text style={styles.navText}>بحث</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.navItem} onPress={openSupport}>
+          <Text style={styles.navIcon}>•••</Text>
+          <Text style={styles.navText}>المزيد</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
+    backgroundColor: '#07111F',
+  },
+  content: {
+    paddingTop: 55,
+    paddingHorizontal: 18,
+    paddingBottom: 110,
+  },
+  header: {
     flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    marginBottom: 24,
   },
-  heroSection: {
+  logo: {
+    color: '#2196F3',
+    fontSize: 42,
+    fontWeight: '900',
+    letterSpacing: 3,
+  },
+  welcome: {
+    color: '#91A4B8',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  profileButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#122235',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileIcon: {
+    fontSize: 22,
+  },
+  featured: {
+    backgroundColor: '#102A43',
+    borderWidth: 1,
+    borderColor: '#1D4F73',
+    borderRadius: 18,
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 28,
+  },
+  featuredTitle: {
+    color: '#FFFFFF',
+    fontSize: 19,
+    fontWeight: '800',
+  },
+  featuredSubtitle: {
+    color: '#8FA8C2',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  roomButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  roomButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  sectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 21,
+    fontWeight: '800',
+    marginBottom: 13,
+  },
+  countryCard: {
+    backgroundColor: '#0D1B2A',
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countryInfo: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  countryName: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  stats: {
+    color: '#7F94AA',
+    fontSize: 12,
+    marginTop: 6,
+  },
+  arrow: {
+    color: '#6F8499',
+    fontSize: 30,
+    transform: [{ rotate: '180deg' }],
+  },
+  totalCard: {
+    backgroundColor: '#0D1B2A',
+    borderRadius: 16,
+    padding: 18,
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  totalItem: {
+    alignItems: 'center',
+  },
+  totalNumber: {
+    color: '#2196F3',
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  totalLabel: {
+    color: '#8195A9',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  divider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#26384A',
+  },
+  bottomBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 78,
+    backgroundColor: '#0A1725',
+    borderTopWidth: 1,
+    borderTopColor: '#1B2D40',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  navItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    minWidth: 65,
   },
-  title: {
-    textAlign: 'center',
+  navIcon: {
+    fontSize: 19,
+    marginBottom: 4,
   },
-  code: {
-    textTransform: 'uppercase',
+  navActive: {
+    color: '#2196F3',
+    fontSize: 11,
+    fontWeight: '800',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  navText: {
+    color: '#71869A',
+    fontSize: 11,
   },
 });
