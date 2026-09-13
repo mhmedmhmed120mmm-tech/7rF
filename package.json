@@ -46,7 +46,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "windows": "electron .",
-    "windows-build": "electron-builder --win --x64"
+    "windows-build": "electron-builder --win --x64 --publish never"
   },
   "private": true
 }
