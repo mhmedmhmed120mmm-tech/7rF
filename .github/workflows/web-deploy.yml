@@ -34,10 +34,11 @@ jobs:
 
       - name: Prepare Supabase env
         run: |
-          printf "EXPO_PUBLIC_SUPABASE_URL=%s
-" "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" > .env
-          printf "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s
-" "${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}" >> .env
+          printf "%s\n" "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" > .env
+          printf "%s\n" "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}" >> .env
+          test -n "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}"
+          test -n "${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}"
+
       - name: Build Expo Web
         run: npx expo export --platform web
 
