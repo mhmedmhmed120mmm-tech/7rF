@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "7rF-App",
+    "name": "SevenRF-App",
     "slug": "7rF-App",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -35,7 +35,9 @@
         }
       ],
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc"
     ],
     "experiments": {
       "typedRoutes": true,
