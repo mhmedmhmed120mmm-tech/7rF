@@ -32,8 +32,10 @@ jobs:
       - name: Install Android SDK packages
         run: |
           yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
+      - name: Install NDK 29
+        run: sdkmanager "ndk;29.0.14206865"
       - name: Install dependencies
         run: npm ci
 
