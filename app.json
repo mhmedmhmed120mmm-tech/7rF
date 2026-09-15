@@ -42,7 +42,7 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true,
-      "baseUrl": "/7rF"
+      "baseUrl": "/SevenRF-App"
     },
     "extra": {
       "router": {},
