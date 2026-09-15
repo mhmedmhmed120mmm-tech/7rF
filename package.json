@@ -1,5 +1,5 @@
 {
-  "name": "7rf-app",
+  "name": "sevenrf-app",
   "version": "1.0.0",
   "dependencies": {
     "@config-plugins/react-native-webrtc": "^15.0.2",
