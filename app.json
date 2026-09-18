@@ -36,8 +36,9 @@
       ],
       "expo-image",
       "expo-web-browser",
-      "@livekit/react-native-expo-plugin",
-      "@config-plugins/react-native-webrtc"
+      "expo-audio",
+      "@config-plugins/react-native-webrtc",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

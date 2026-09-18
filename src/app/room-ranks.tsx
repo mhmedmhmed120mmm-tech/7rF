@@ -61,7 +61,7 @@ export default function RoomRanksScreen() {
       .order('priority', { ascending: false });
 
     if (error) {
-      Alert.alert('خطأ', error.message);
+      console.log('RANK ERROR:', JSON.stringify(error, null, 2)); Alert.alert('خطأ', error.message);
       setDbRanks([]);
     } else {
       setDbRanks((data || []) as Rank[]);
@@ -101,7 +101,7 @@ export default function RoomRanksScreen() {
     setSaving(false);
 
     if (error) {
-      Alert.alert('خطأ', error.message);
+      console.log('RANK ERROR:', JSON.stringify(error, null, 2)); Alert.alert('خطأ', error.message);
       return;
     }
 

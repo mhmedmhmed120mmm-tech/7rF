@@ -1,7 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FlatList,
+  Animated,
+  PanResponder,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -11,11 +13,8 @@ import {
   View,
   Modal,
   Pressable,
-  Animated,
-  PanResponder,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { Room } from 'livekit-client';
 
 type Message = {
   id: string;
@@ -28,8 +27,6 @@ type Message = {
 
 export default function ChatScreen() {
   const router = useRouter();
-  const liveKitRoomRef = useRef<Room | null>(null);
-
   const params = useLocalSearchParams<{
     room?: string;
     country?: string;
@@ -42,13 +39,14 @@ export default function ChatScreen() {
   const country = params.country || '';
   const username = params.username || 'زائر';
   const userIcon = params.icon || '⭐';
+  const loginType = params.loginType || 'guest';
 
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [showMenu, setShowMenu] = useState(false);
 
   const [showManagement, setShowManagement] = useState(false);
-  const [loadError, setLoadError] = useState('');
+
   const [showMicPanel, setShowMicPanel] = useState(false);
   const [micSpeaker, setMicSpeaker] = useState('');
   const [micSpeakerIcon, setMicSpeakerIcon] = useState('');
@@ -61,127 +59,9 @@ export default function ChatScreen() {
     { username: string; icon: string }[]
   >([]);
 
-  const connectLiveKit = async () => {
-    try {
-      const response = await fetch(
-        'https://jdiqyulljbdmdugnymbr.supabase.co/functions/v1/bright-endpoint',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '',
-            Authorization: `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ''}`,
-          },
-          body: JSON.stringify({
-            room_name: room,
-            participant_identity: `${username}-${Date.now()}`,
-            participant_name: username,
-          }),
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok || !data.server_url || !data.participant_token) {
-        console.log('LIVEKIT TOKEN ERROR:', data);
-        return;
-      }
-
-      const liveKitRoom = new Room();
-      await liveKitRoom.connect(
-        data.server_url,
-        data.participant_token,
-      );
-
-      liveKitRoomRef.current = liveKitRoom;
-
-      await liveKitRoom.localParticipant.setMicrophoneEnabled(false);
-
-      console.log('LIVEKIT CONNECTED:', room);
-    } catch (error) {
-      console.log('LIVEKIT CONNECT ERROR:', error);
-    }
-  };
-
   useEffect(() => {
-    // connectLiveKit();
-
-    return () => {
-      const liveKitRoom = liveKitRoomRef.current;
-
-      if (liveKitRoom) {
-        liveKitRoom.disconnect();
-        liveKitRoomRef.current = null;
-      }
-    };
-  }, [room, username]);
-
-  const micPanelX = useState(new Animated.Value(-310))[0];
-
-  const openMicPanel = () => {
-    setShowMicPanel(true);
-    Animated.spring(micPanelX, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 70,
-      friction: 12,
-    }).start();
-  };
-
-  const closeMicPanel = () => {
-    Animated.timing(micPanelX, {
-      toValue: -310,
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => setShowMicPanel(false));
-  };
-
-  const micPanResponder = useState(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gesture) =>
-        gesture.dx > 15 && Math.abs(gesture.dy) < 80,
-      onPanResponderRelease: (_, gesture) => {
-        if (gesture.dx > 60) {
-          openMicPanel();
-        }
-      },
-    })
-  )[0];
-
-  useEffect(() => {
-    let channel: any;
-
-    try {
-      channel = supabase
+    const channel = supabase
       .channel(`room-${room}-${country}`)
-      .on(
-        'presence',
-        { event: 'sync' },
-        () => {
-          const state = channel.presenceState();
-
-          const members: { username: string; icon: string }[] = [];
-
-          Object.values(state).forEach((presences: any) => {
-            (presences as any[]).forEach((presence: any) => {
-              if (!presence?.username) return;
-
-              if (
-                !members.some(
-                  (item) => item.username === presence.username
-                )
-              ) {
-                members.push({
-                  username: presence.username,
-                  icon: presence.icon || '⭐',
-                });
-              }
-            });
-          });
-
-          setRoomMembers(members);
-        }
-      )
       .on(
         'postgres_changes',
         {
@@ -217,14 +97,7 @@ export default function ChatScreen() {
           });
         }
       )
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          await channel.track({
-            username,
-            icon: userIcon,
-          });
-        }
-      });
+      .subscribe();
 
     const enterRoom = async () => {
       await supabase.from('chat_messages').insert({
@@ -236,11 +109,7 @@ export default function ChatScreen() {
       });
     };
 
-      enterRoom();
-    } catch (error) {
-      console.error('CHAT LOAD ERROR:', error);
-      setLoadError(String(error));
-    }
+    enterRoom();
 
     return () => {
       supabase.from('chat_messages').insert({
@@ -255,15 +124,37 @@ export default function ChatScreen() {
     };
   }, [room, country, username, userIcon]);
 
-  useEffect(() => {
-    if (!micSpeaker || micSeconds <= 0) return;
+  const micPanelX = useState(new Animated.Value(-310))[0];
 
-    const timer = setInterval(() => {
-      setMicSeconds((current) => Math.max(0, current - 1));
-    }, 1000);
+  const openMicPanel = () => {
+    setShowMicPanel(true);
+    Animated.spring(micPanelX, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 70,
+      friction: 12,
+    }).start();
+  };
 
-    return () => clearInterval(timer);
-  }, [micSpeaker, micSeconds]);
+  const closeMicPanel = () => {
+    Animated.timing(micPanelX, {
+      toValue: -310,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => setShowMicPanel(false));
+  };
+
+  const micPanResponder = useState(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        gesture.dx > 15 && Math.abs(gesture.dy) < 80,
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dx > 60) {
+          openMicPanel();
+        }
+      },
+    })
+  )[0];
 
   const loadMicQueue = async () => {
     const { data, error } = await supabase
@@ -284,7 +175,9 @@ export default function ChatScreen() {
   const loadRoomMic = async () => {
     const { data, error } = await supabase
       .from('room_mics')
-      .select('speaker_username, speaker_icon, started_at, expires_at, status')
+      .select(
+        'speaker_username, speaker_icon, started_at, expires_at, status'
+      )
       .eq('room_name', room)
       .eq('status', 'active')
       .maybeSingle();
@@ -307,8 +200,11 @@ export default function ChatScreen() {
     if (data.expires_at) {
       const remaining = Math.max(
         0,
-        Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000)
+        Math.floor(
+          (new Date(data.expires_at).getTime() - Date.now()) / 1000
+        )
       );
+
       setMicSeconds(remaining);
     }
   };
@@ -363,7 +259,17 @@ export default function ChatScreen() {
   }, [room]);
 
   useEffect(() => {
-    if (!micSpeaker || micSeconds != 0) return;
+    if (!micSpeaker || micSeconds <= 0) return;
+
+    const timer = setInterval(() => {
+      setMicSeconds((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [micSpeaker, micSeconds]);
+
+  useEffect(() => {
+    if (!micSpeaker || micSeconds !== 0) return;
 
     const expireMic = async () => {
       const { error } = await supabase
@@ -504,7 +410,7 @@ export default function ChatScreen() {
       });
 
     if (error) {
-      console.log('SEND MESSAGE ERROR:', JSON.stringify(error, null, 2));
+      console.log('SEND MESSAGE ERROR:', error);
       setMessages((current) =>
         current.filter((item) => item.id !== localId)
       );
@@ -519,7 +425,7 @@ export default function ChatScreen() {
         {...micPanResponder.panHandlers}
       />
 
-      <KeyboardAvoidingView
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -585,6 +491,7 @@ export default function ChatScreen() {
           onPress={() => setShowMenu(false)}
         >
           <View style={styles.menuBox}>
+            {loginType !== 'guest' && (
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
@@ -598,6 +505,7 @@ export default function ChatScreen() {
               <Text style={styles.menuIcon}>⚙️</Text>
               <Text style={styles.menuText}>إدارة الغرفة</Text>
             </TouchableOpacity>
+            )}
           </View>
         </Pressable>
       </Modal>
@@ -672,54 +580,73 @@ export default function ChatScreen() {
             ]}
             onStartShouldSetResponder={() => true}
           >
-              <View style={styles.micMembersBox}>
-              {micSpeaker ? (
-                <View style={styles.micMemberItem}>
-                  <Text style={styles.micMemberIcon}>🎙️</Text>
-                  <Text style={styles.micMemberName}>
-                    {micSpeaker}
-                  </Text>
-                </View>
-              ) : null}
+            <View style={styles.micPanelHeader}>
+              <TouchableOpacity onPress={closeMicPanel}>
+                <Text style={styles.micClose}>✕</Text>
+              </TouchableOpacity>
 
-              {micQueue.map((item) => (
-                <View key={item.id} style={styles.micMemberItem}>
-                  <Text style={styles.micMemberIcon}>✋</Text>
-                  <Text style={styles.micMemberName}>
-                    {item.username}
-                  </Text>
-                </View>
-              ))}
+              <Text style={styles.micPanelTitle}>🎙️ المايك</Text>
 
-              {roomMembers
-                .filter((member) => member.username !== micSpeaker)
-                .map((member, index) => (
-                  <View
-                    key={`${member.username}-${index}`}
-                    style={styles.micMemberItem}
-                  >
-                    <Text style={styles.micMemberIcon}>
-                      {member.icon || '⭐'}
+              <View style={{ width: 25 }} />
+            </View>
+
+            <View style={styles.micStatusBox}>
+              <Text style={styles.micIcon}>
+                {micSpeaker ? '🎙️' : '🎤'}
+              </Text>
+
+              <Text style={styles.micSpeaker}>
+                {micSpeaker || 'المايك فارغ'}
+              </Text>
+
+              <Text style={styles.micTimer}>
+                {micSpeaker ? formatMicTime(micSeconds) : '-:-'}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.micRequestButton}
+                onPress={handleMicPress}
+              >
+                <Text style={styles.micRequestText}>
+                  {micSpeaker === username
+                    ? 'إنهاء المايك'
+                    : micSpeaker
+                      ? 'طلب المايك'
+                      : 'أخذ المايك'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.micQueueBox}>
+              <Text style={styles.micSectionTitle}>
+                طابور المايك
+              </Text>
+
+              {micQueue.length === 0 ? (
+                <Text style={styles.micEmptyText}>
+                  لا يوجد أحد بالطابور
+                </Text>
+              ) : (
+                micQueue.map((item, index) => (
+                  <View key={item.id} style={styles.micQueueItem}>
+                    <Text style={styles.micQueueNumber}>
+                      {index + 1}
                     </Text>
-                    <Text style={styles.micMemberName}>
-                      {member.username}
+                    <Text style={styles.micQueueIcon}>
+                      {item.user_icon || '⭐'}
+                    </Text>
+                    <Text style={styles.micQueueName}>
+                      {item.username}
                     </Text>
                   </View>
-                ))}
+                ))
+              )}
             </View>
           </Animated.View>
         </Pressable>
       )}
 
       <View style={styles.inputArea}>
-        <TouchableOpacity
-          style={styles.bottomMicButton}
-          onPress={handleMicPress}
-          activeOpacity={0.75}
-        >
-          <Text style={styles.bottomMicText}>🎙️</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.attachButton}>
           <Text style={styles.attachText}>＋</Text>
         </TouchableOpacity>
@@ -736,6 +663,14 @@ export default function ChatScreen() {
         />
 
         <TouchableOpacity
+          style={styles.bottomMicButton}
+          onPress={handleMicPress}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.bottomMicText}>🎙️</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={styles.sendButton}
           onPress={sendMessage}
           activeOpacity={0.75}
@@ -743,7 +678,7 @@ export default function ChatScreen() {
           <Text style={styles.sendText}>➤</Text>
         </TouchableOpacity>
       </View>
-      </KeyboardAvoidingView>
+    </KeyboardAvoidingView>
     </>
   );
 }
@@ -981,6 +916,19 @@ const styles = StyleSheet.create({
     zIndex: 50,
   },
 
+  bottomMicButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 4,
+  },
+
+  bottomMicText: {
+    fontSize: 23,
+  },
+
   micPanelOverlay: {
     position: 'absolute',
     left: 0,
@@ -999,7 +947,7 @@ const styles = StyleSheet.create({
     width: '50%',
     minWidth: 300,
     maxWidth: 380,
-    backgroundColor: 'rgba(10,23,37,0.88)',
+    backgroundColor: 'rgba(10,23,37,0.96)',
     borderRightWidth: 1,
     borderRightColor: 'rgba(41,65,90,0.8)',
     paddingTop: 48,
@@ -1059,60 +1007,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#2196F3',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '90%',
   },
 
   micRequestText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
-  },
-
-  micLeaveButton: {
-    height: 44,
-    marginTop: 10,
-    borderRadius: 12,
-    backgroundColor: '#18293B',
-    borderWidth: 1,
-    borderColor: '#29415A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  micLeaveText: {
-    color: '#FF7777',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-
-  micMembersBox: {
-    marginTop: 18,
-    backgroundColor: 'rgba(16,29,45,0.72)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(41,65,90,0.8)',
-    padding: 12,
-  },
-
-  micMemberItem: {
-    minHeight: 42,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(41,65,90,0.55)',
-    paddingVertical: 7,
-  },
-
-  micMemberIcon: {
-    fontSize: 20,
-    marginHorizontal: 7,
-  },
-
-  micMemberName: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'right',
   },
 
   micQueueBox: {
@@ -1180,17 +1081,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-  },
-  bottomMicButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 4,
-  },
-  bottomMicText: {
-    fontSize: 23,
   },
   attachButton: {
     width: 42,

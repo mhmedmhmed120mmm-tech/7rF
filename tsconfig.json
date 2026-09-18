@@ -16,5 +16,15 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
+  ],
+  "exclude": [
+    "**/*.backup.ts",
+    "**/*.backup.tsx",
+    "**/*.before-*.ts",
+    "**/*.before-*.tsx",
+    "**/*.current-backup.ts",
+    "**/*.current-backup.tsx",
+    "**/*.livekit-disabled-backup.ts",
+    "**/*.livekit-disabled-backup.tsx"
   ]
 }

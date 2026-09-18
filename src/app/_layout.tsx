@@ -1,11 +1,9 @@
 import { Stack } from 'expo-router';
-import { registerGlobals } from '@livekit/react-native';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 
 SplashScreen.preventAutoHideAsync();
-// registerGlobals();
 
 export default function RootLayout() {
   return (
