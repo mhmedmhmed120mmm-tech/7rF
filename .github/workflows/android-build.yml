@@ -29,6 +29,13 @@ jobs:
           distribution: temurin
           java-version: 21
 
+      - name: Prepare Supabase env
+        run: |
+          printf "%s\n" "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" > .env
+          printf "%s\n" "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}" >> .env
+          test -n "${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}"
+          test -n "${{ secrets.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}"
+
       - name: Generate Android project
         run: npx expo prebuild --platform android --no-install
 
