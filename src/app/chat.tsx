@@ -33,6 +33,10 @@ export default function ChatScreen() {
     username?: string;
     icon?: string;
     loginType?: string;
+    role?: string;
+    rank?: string;
+    rankColor?: string;
+    rankPriority?: string;
   }>();
 
   const room = params.room || 'الغرفة';
@@ -40,7 +44,11 @@ export default function ChatScreen() {
   const username = params.username || 'زائر';
   const userIcon = params.icon || '⭐';
   const loginType = params.loginType || 'guest';
+  const role = params.role || '';
+  const rank = params.rank || '';
+  const rankPriority = Number(params.rankPriority || 0);
 
+  const [canManageRoom, setCanManageRoom] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [showMenu, setShowMenu] = useState(false);
@@ -56,8 +64,61 @@ export default function ChatScreen() {
   >([]);
 
   const [roomMembers, setRoomMembers] = useState<
-    { username: string; icon: string }[]
+    { username: string; icon: string; rankColor: string }[]
   >([]);
+
+  useEffect(() => {
+    let active = true;
+
+    const checkManagementAccess = async () => {
+      if (loginType === 'guest') {
+        if (active) setCanManageRoom(false);
+        return;
+      }
+
+      // المالك الحقيقي 7rF
+      if (role === 'owner' && username === '7rF') {
+        const { data: authData } = await supabase.auth.getUser();
+
+        if (authData.user) {
+          const { data: ownerProfile } = await supabase
+            .from('profiles')
+            .select('username, role')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+
+          if (
+            ownerProfile?.username === '7rF' &&
+            ownerProfile?.role === 'owner'
+          ) {
+            if (active) setCanManageRoom(true);
+            return;
+          }
+        }
+      }
+
+      // أي عضو/موظف: الصلاحية تأتي من رتبته في نفس الغرفة فقط
+      const { data: roomRank } = await supabase
+        .from('room_ranks')
+        .select('name, priority')
+        .eq('room_id', room)
+        .eq('name', username)
+        .maybeSingle();
+
+      const priority = Number(roomRank?.priority ?? rankPriority);
+
+      // الرتبة الإدارية تبدأ من Master وما فوقها
+      if (active) {
+        setCanManageRoom(Boolean(roomRank && priority > 0));
+      }
+    };
+
+    checkManagementAccess();
+
+    return () => {
+      active = false;
+    };
+  }, [room, username, loginType, role, rankPriority]);
 
   useEffect(() => {
     const channel = supabase
@@ -121,6 +182,75 @@ export default function ChatScreen() {
       });
 
       supabase.removeChannel(channel);
+    };
+  }, [room, country, username, userIcon]);
+
+  useEffect(() => {
+    const presenceChannel = supabase.channel(
+      `room-presence-${room}-${country}`,
+      {
+        config: {
+          presence: {
+            key: username,
+          },
+        },
+      }
+    );
+
+    const loadMembers = async () => {
+      const state = presenceChannel.presenceState();
+
+      const users = Object.values(state).flatMap((entries: any[]) =>
+        entries.map((entry) => ({
+          username: entry.username || '',
+          icon: entry.icon || '⭐',
+        }))
+      );
+
+      const uniqueUsers = users.filter(
+        (user, index, array) =>
+          user.username &&
+          array.findIndex((item) => item.username === user.username) === index
+      );
+
+      const members = await Promise.all(
+        uniqueUsers.map(async (user) => {
+          const { data: rank } = await supabase
+            .from('room_ranks')
+            .select('color')
+            .eq('room_id', room || '')
+            .eq('name', user.username)
+            .maybeSingle();
+
+          return {
+            username: user.username,
+            icon: user.icon,
+            rankColor: rank?.color || '#202020',
+          };
+        })
+      );
+
+      setRoomMembers(members);
+    };
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, loadMembers)
+      .on('presence', { event: 'join' }, loadMembers)
+      .on('presence', { event: 'leave' }, loadMembers)
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presenceChannel.track({
+            username,
+            icon: userIcon || '⭐',
+          });
+
+          await loadMembers();
+        }
+      });
+
+    return () => {
+      presenceChannel.untrack();
+      supabase.removeChannel(presenceChannel);
     };
   }, [room, country, username, userIcon]);
 
@@ -491,21 +621,46 @@ export default function ChatScreen() {
           onPress={() => setShowMenu(false)}
         >
           <View style={styles.menuBox}>
-            {loginType !== 'guest' && (
+            {canManageRoom && (
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
                 setShowMenu(false);
                 router.push({
                   pathname: '/room-management',
-                  params: { room, country },
+                  params: {
+                    room,
+                    country,
+                    username,
+                    loginType,
+                    role,
+                    rank,
+                    rankPriority: String(rankPriority),
+                  },
                 });
               }}
             >
               <Text style={styles.menuIcon}>⚙️</Text>
               <Text style={styles.menuText}>إدارة الغرفة</Text>
             </TouchableOpacity>
-            )}
+          )}
+
+          {room === 'الدعم الفني' && (canManageRoom && (rank === 'Master' || rank === 'master' || role === 'owner')) && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowMenu(false);
+                router.push({
+                  pathname: '/room-admin',
+                  params: { room, country, username, role, rank },
+                });
+              }}
+            >
+              <Text style={styles.menuIcon}>🏠</Text>
+              <Text style={styles.menuText}>إدارة الغرف</Text>
+            </TouchableOpacity>
+          )}
+
           </View>
         </Pressable>
       </Modal>
@@ -619,6 +774,35 @@ export default function ChatScreen() {
 
             <View style={styles.micQueueBox}>
               <Text style={styles.micSectionTitle}>
+                👥 الموجودين ({roomMembers.length})
+              </Text>
+
+              {roomMembers.length === 0 ? (
+                <Text style={styles.micEmptyText}>
+                  لا يوجد أحد حالياً
+                </Text>
+              ) : (
+                roomMembers.map((member) => (
+                  <View key={member.username} style={styles.micQueueItem}>
+                    <Text style={styles.micQueueIcon}>
+                      {member.icon || '⭐'}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.micQueueName,
+                        { color: member.rankColor },
+                      ]}
+                    >
+                      {member.username}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            <View style={styles.micQueueBox}>
+              <Text style={styles.micSectionTitle}>
                 طابور المايك
               </Text>
 
@@ -655,7 +839,7 @@ export default function ChatScreen() {
           value={message}
           onChangeText={setMessage}
           placeholder="اكتب رسالتك..."
-          placeholderTextColor="#71869A"
+          placeholderTextColor="#202020"
           style={styles.input}
           multiline
           maxLength={1000}
@@ -686,21 +870,21 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07111F',
+    backgroundColor: '#F4F2ED',
   },
   header: {
     height: 92,
     paddingTop: 40,
     paddingHorizontal: 16,
-    backgroundColor: '#0A1725',
+    backgroundColor: '#ECE9E2',
     borderBottomWidth: 1,
-    borderBottomColor: '#1B2D40',
+    borderBottomColor: '#C9C4BA',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   back: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 38,
   },
   headerInfo: {
@@ -708,12 +892,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   roomTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 18,
     fontWeight: '800',
   },
   roomSubtitle: {
-    color: '#71869A',
+    color: '#202020',
     fontSize: 11,
     marginTop: 4,
   },
@@ -722,7 +906,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   moreText: {
-    color: '#8FA8C2',
+    color: '#202020',
     fontSize: 23,
   },
 
@@ -737,10 +921,10 @@ const styles = StyleSheet.create({
 
   menuBox: {
     width: 170,
-    backgroundColor: '#101D2D',
+    backgroundColor: '#DEDAD1',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     padding: 6,
   },
 
@@ -757,7 +941,7 @@ const styles = StyleSheet.create({
   },
 
   menuText: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -775,12 +959,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 18,
     fontWeight: '800',
   },
   emptyText: {
-    color: '#71869A',
+    color: '#202020',
     fontSize: 13,
     marginTop: 7,
   },
@@ -797,7 +981,7 @@ const styles = StyleSheet.create({
   },
 
   username: {
-    color: '#BFD0E2',
+    color: '#202020',
     fontSize: 12,
     fontWeight: '700',
   },
@@ -813,7 +997,7 @@ const styles = StyleSheet.create({
   messageBubble: {
     maxWidth: '82%',
     alignSelf: 'flex-start',
-    backgroundColor: '#0D1B2A',
+    backgroundColor: '#E7E4DC',
     borderRadius: 16,
     borderBottomLeftRadius: 4,
     paddingHorizontal: 13,
@@ -821,17 +1005,17 @@ const styles = StyleSheet.create({
   },
   myMessageBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#1769AA',
+    backgroundColor: '#E7E4DC',
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 4,
   },
   messageText: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 15,
     lineHeight: 21,
   },
   messageTime: {
-    color: '#A9C0D5',
+    color: '#202020',
     fontSize: 9,
     marginTop: 4,
     textAlign: 'left',
@@ -847,10 +1031,10 @@ const styles = StyleSheet.create({
   managementBox: {
     width: '100%',
     maxWidth: 500,
-    backgroundColor: '#101D2D',
+    backgroundColor: '#DEDAD1',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     paddingVertical: 10,
   },
 
@@ -863,7 +1047,7 @@ const styles = StyleSheet.create({
   },
 
   managementTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 16,
     fontWeight: '800',
   },
@@ -889,9 +1073,9 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#0A1625',
+    backgroundColor: '#E3E0D8',
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -901,7 +1085,7 @@ const styles = StyleSheet.create({
   },
 
   managementItemText: {
-    color: '#DCE7F2',
+    color: '#202020',
     fontSize: 9,
     marginTop: 5,
     textAlign: 'center',
@@ -912,8 +1096,8 @@ const styles = StyleSheet.create({
     left: 0,
     top: 92,
     bottom: 68,
-    width: 28,
-    zIndex: 50,
+    width: 70,
+    zIndex: 999,
   },
 
   bottomMicButton: {
@@ -947,9 +1131,9 @@ const styles = StyleSheet.create({
     width: '50%',
     minWidth: 300,
     maxWidth: 380,
-    backgroundColor: 'rgba(10,23,37,0.96)',
+    backgroundColor: '#F4F2ED',
     borderRightWidth: 1,
-    borderRightColor: 'rgba(41,65,90,0.8)',
+    borderRightColor: '#C2BDB3',
     paddingTop: 48,
     paddingHorizontal: 16,
   },
@@ -962,7 +1146,7 @@ const styles = StyleSheet.create({
   },
 
   micPanelTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 19,
     fontWeight: '800',
   },
@@ -974,10 +1158,10 @@ const styles = StyleSheet.create({
 
   micStatusBox: {
     marginTop: 25,
-    backgroundColor: '#101D2D',
+    backgroundColor: '#DEDAD1',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     paddingVertical: 22,
     alignItems: 'center',
   },
@@ -987,7 +1171,7 @@ const styles = StyleSheet.create({
   },
 
   micSpeaker: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 16,
     fontWeight: '800',
     marginTop: 10,
@@ -1011,22 +1195,22 @@ const styles = StyleSheet.create({
   },
 
   micRequestText: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 15,
     fontWeight: '800',
   },
 
   micQueueBox: {
     marginTop: 18,
-    backgroundColor: 'rgba(16,29,45,0.72)',
+    backgroundColor: '#E8E5DE',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(41,65,90,0.8)',
+    borderColor: '#C2BDB3',
     padding: 12,
   },
 
   micSectionTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 15,
     fontWeight: '800',
     textAlign: 'right',
@@ -1034,7 +1218,7 @@ const styles = StyleSheet.create({
   },
 
   micEmptyText: {
-    color: '#8FA3B8',
+    color: '#202020',
     fontSize: 13,
     textAlign: 'right',
     paddingVertical: 8,
@@ -1045,7 +1229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(41,65,90,0.55)',
+    borderTopColor: '#C9C4BA',
     paddingVertical: 7,
   },
 
@@ -1064,7 +1248,7 @@ const styles = StyleSheet.create({
 
   micQueueName: {
     flex: 1,
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'right',
@@ -1075,9 +1259,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 10,
     paddingBottom: 37,
-    backgroundColor: '#0A1725',
+    backgroundColor: '#ECE9E2',
     borderTopWidth: 1,
-    borderTopColor: '#1B2D40',
+    borderTopColor: '#C9C4BA',
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
@@ -1086,12 +1270,12 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: '#122235',
+    backgroundColor: '#E8E5DE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   attachText: {
-    color: '#8FA8C2',
+    color: '#202020',
     fontSize: 24,
   },
   input: {
@@ -1101,8 +1285,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 21,
-    backgroundColor: '#122235',
-    color: '#FFFFFF',
+    backgroundColor: '#E8E5DE',
+    color: '#202020',
     fontSize: 14,
   },
   sendButton: {
@@ -1114,7 +1298,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendText: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 19,
   },
 });

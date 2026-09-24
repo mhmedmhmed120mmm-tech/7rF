@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Application from 'expo-application';
 import {
   View,
   Text,
@@ -120,6 +121,11 @@ export default function LoginScreen() {
       return;
     }
 
+    const selectedRoom = room || '';
+    const selectedCountry = country || '';
+    const enteredName = username.trim();
+
+    // المالك 7rF: يدخل كل الغرف بصلاحيات المالك
     if (type === 'registered') {
       if (!password.trim()) {
         Alert.alert('تنبيه', 'اكتب كلمة مرور المسجل');
@@ -132,7 +138,7 @@ export default function LoginScreen() {
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('id,username,display_name,role,login_email')
-          .eq('username', username.trim())
+          .eq('username', enteredName)
           .maybeSingle();
 
         if (profileError) {
@@ -156,11 +162,12 @@ export default function LoginScreen() {
           return;
         }
 
-        const { data: verifiedProfile, error: verifiedError } = await supabase
-          .from('profiles')
-          .select('id,username,display_name,role,login_email')
-          .eq('id', authData.user.id)
-          .maybeSingle();
+        const { data: verifiedProfile, error: verifiedError } =
+          await supabase
+            .from('profiles')
+            .select('id,username,display_name,role,login_email')
+            .eq('id', authData.user.id)
+            .maybeSingle();
 
         if (verifiedError || !verifiedProfile) {
           await supabase.auth.signOut();
@@ -168,15 +175,100 @@ export default function LoginScreen() {
           return;
         }
 
+        // المالك 7rF فوق الجميع ويدخل كل الغرف
+        if (verifiedProfile.role === 'owner' && verifiedProfile.username === '7rF') {
+          router.replace({
+            pathname: '/chat',
+            params: {
+              room: selectedRoom,
+              country: selectedCountry,
+              username: verifiedProfile.username,
+              loginType: 'registered',
+              icon,
+              role: 'owner',
+              rank: 'owner',
+              rankColor: '#FF4B4B',
+              rankPriority: '1000',
+            },
+          });
+          return;
+        }
+
+        // المسجل يدخل كل الغرف، لكن يأخذ رتبة فقط إذا كانت له عضوية بهذه الغرفة
+        const { data: rank, error: rankError } = await supabase
+          .from('room_ranks')
+          .select('id,name,color,priority,password,device_id')
+          .eq('room_id', selectedRoom)
+          .eq('name', verifiedProfile.username)
+          .maybeSingle();
+
+        if (rankError) {
+          console.error('Registered room rank error:', rankError);
+          await supabase.auth.signOut();
+          Alert.alert('خطأ', 'تعذر التحقق من عضوية الغرفة');
+          return;
+        }
+
+        // لا توجد عضوية بهذه الغرفة = يدخل كزائر
+        if (!rank) {
+          router.replace({
+            pathname: '/chat',
+            params: {
+              room: selectedRoom,
+              country: selectedCountry,
+              username: verifiedProfile.username,
+              loginType: 'registered',
+              icon,
+              role: verifiedProfile.role,
+            },
+          });
+          return;
+        }
+
+        // توجد عضوية بهذه الغرفة = يستخدم رتبة هذه الغرفة فقط
+        const deviceId = Application.getAndroidId();
+
+        if (!deviceId) {
+          await supabase.auth.signOut();
+          Alert.alert('خطأ', 'تعذر التعرف على هذا الجهاز');
+          return;
+        }
+
+        if (rank.device_id && rank.device_id !== deviceId) {
+          await supabase.auth.signOut();
+          Alert.alert(
+            'الدخول مرفوض',
+            'لا يُسمح لهذا العضو بالدخول من هذا الجهاز'
+          );
+          return;
+        }
+
+        if (!rank.device_id) {
+          const { error: deviceError } = await supabase
+            .from('room_ranks')
+            .update({ device_id: deviceId })
+            .eq('id', rank.id);
+
+          if (deviceError) {
+            console.error('Device binding error:', deviceError);
+            await supabase.auth.signOut();
+            Alert.alert('خطأ', 'تعذر تسجيل هذا الجهاز للعضو');
+            return;
+          }
+        }
+
         router.replace({
           pathname: '/chat',
           params: {
-            room: room || '',
-            country: country || '',
-            username: profile.username,
-            loginType: type,
+            room: selectedRoom,
+            country: selectedCountry,
+            username: verifiedProfile.username,
+            loginType: 'registered',
             icon,
-            role: profile.role,
+            role: verifiedProfile.role,
+            rank: rank.name,
+            rankColor: rank.color,
+            rankPriority: String(rank.priority ?? 0),
           },
         });
       } catch {
@@ -188,18 +280,125 @@ export default function LoginScreen() {
       return;
     }
 
-    if (type === 'member' && !roomPassword.trim()) {
-      Alert.alert('تنبيه', 'اكتب كلمة مرور الغرفة');
+    // العضو: لا يدخل إلا إذا كانت له رتبة في هذه الغرفة تحديداً
+      // العضو: لا يدخل إلا إذا كانت له رتبة في هذه الغرفة تحديداً
+      if (type === 'member') {
+        if (!roomPassword.trim()) {
+          Alert.alert('تنبيه', 'اكتب كلمة مرور العضو');
+          return;
+        }
+
+        const { data: ranks, error: rankError } = await supabase
+          .from('room_ranks')
+          .select('id,name,color,priority,password,device_id')
+          .eq('room_id', selectedRoom)
+          .eq('name', enteredName)
+          .limit(1);
+
+        if (rankError) {
+          console.error('Member login error:', rankError);
+          Alert.alert('خطأ', 'تعذر التحقق من بيانات العضو');
+          return;
+        }
+
+        const rank = ranks?.[0];
+
+        if (!rank) {
+          Alert.alert(
+            'الدخول مرفوض',
+            'هذا الاسم غير موجود ضمن رتب هذه الغرفة'
+          );
+          return;
+        }
+
+        if (rank.password !== roomPassword.trim()) {
+          Alert.alert(
+            'خطأ',
+            'اسم العضو أو كلمة المرور غير صحيحة'
+          );
+          return;
+        }
+
+        const deviceId = Application.getAndroidId();
+
+        if (!deviceId) {
+          Alert.alert('خطأ', 'تعذر التعرف على هذا الجهاز');
+          return;
+        }
+
+        if (rank.device_id && rank.device_id !== deviceId) {
+          Alert.alert(
+            'الدخول مرفوض',
+            'هذا الاسم مستخدم على جهاز آخر ضمن هذه الغرفة'
+          );
+          return;
+        }
+
+        if (!rank.device_id) {
+          const { error: deviceError } = await supabase
+            .from('room_ranks')
+            .update({ device_id: deviceId })
+            .eq('id', rank.id);
+
+          if (deviceError) {
+            console.error('Device binding error:', deviceError);
+            Alert.alert(
+              'خطأ',
+              'تعذر تسجيل هذا الجهاز للعضو'
+            );
+            return;
+          }
+        }
+
+        router.replace({
+          pathname: '/chat',
+          params: {
+            room: selectedRoom,
+            country: selectedCountry,
+            username: enteredName,
+            loginType: 'member',
+            icon,
+            rank: rank.name,
+            rankColor: rank.color,
+            rankPriority: String(rank.priority ?? 0),
+          },
+        });
+
+        return;
+      }
+
+    // الزائر: يمنع انتحال أي اسم محجوز كرتبة داخل الغرفة
+    const { data: existingRank, error: guestRankError } = await supabase
+      .from('room_ranks')
+      .select('id,name')
+      .eq('room_id', selectedRoom)
+      .eq('name', enteredName.trim())
+      .maybeSingle();
+
+    if (guestRankError) {
+      console.error('Guest name check error:', guestRankError);
+      Alert.alert(
+        'خطأ',
+        'تعذر التحقق من اسم الزائر'
+      );
+      return;
+    }
+
+    if (existingRank) {
+      Alert.alert(
+        'الدخول مرفوض',
+        'هذا الاسم محجوز لرتبة داخل هذه الغرفة. يرجى الدخول من خيار «عضو» وإدخال كلمة المرور'
+      );
       return;
     }
 
     router.replace({
       pathname: '/chat',
       params: {
-        room: room || '',
-        country: country || '',
-        username: username.trim(),
-        loginType: type,
+        room: selectedRoom,
+        country: selectedCountry,
+        username: enteredName.trim(),
+        loginType: 'guest',
         icon,
       },
     });
@@ -400,9 +599,9 @@ const styles = StyleSheet.create({
     width: '96%',
     padding: 4,
     borderRadius: 10,
-    backgroundColor: '#101d2d',
+    backgroundColor: '#F4F2ED',
     borderWidth: 1,
-    borderColor: '#263a52',
+    borderColor: '#C9C4BA',
   },
   types: {
     flexDirection: 'row-reverse',
@@ -418,7 +617,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1769aa',
   },
   typeText: {
-    color: '#fff',
+    color: '#202020',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -426,7 +625,7 @@ const styles = StyleSheet.create({
     height: 34,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0a1625',
+    backgroundColor: '#E8E5DE',
     borderRadius: 7,
     marginBottom: 3,
   },
@@ -435,12 +634,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   arrowText: {
-    color: '#aebbd0',
+    color: '#202020',
     fontSize: 12,
   },
   username: {
     flex: 1,
-    color: '#fff',
+    color: '#202020',
     fontSize: 13,
     paddingHorizontal: 4,
   },
@@ -453,9 +652,9 @@ const styles = StyleSheet.create({
   },
   input: {
     height: 34,
-    backgroundColor: '#0a1625',
+    backgroundColor: '#E8E5DE',
     borderRadius: 7,
-    color: '#fff',
+    color: '#202020',
     fontSize: 13,
     paddingHorizontal: 10,
     marginBottom: 3,
@@ -496,36 +695,36 @@ const styles = StyleSheet.create({
   namesBox: {
     width: 260,
     maxHeight: 330,
-    backgroundColor: 'rgba(16,29,45,0.96)',
+    backgroundColor: '#F4F2ED',
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#35516d',
+    borderColor: '#C2BDB3',
   },
   iconsBox: {
     width: 280,
-    backgroundColor: 'rgba(16,29,45,0.96)',
+    backgroundColor: '#F4F2ED',
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#35516d',
+    borderColor: '#C2BDB3',
   },
   modalTitle: {
-    color: '#fff',
+    color: '#202020',
     textAlign: 'center',
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 10,
   },
   empty: {
-    color: '#9aa8ba',
+    color: '#202020',
     textAlign: 'center',
     padding: 15,
   },
   savedItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0a1625',
+    backgroundColor: '#E8E5DE',
     borderRadius: 8,
     padding: 9,
     marginBottom: 6,
@@ -535,7 +734,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   savedName: {
-    color: '#fff',
+    color: '#202020',
     fontSize: 13,
     flex: 1,
     textAlign: 'right',
@@ -551,7 +750,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 8,
-    backgroundColor: '#0a1625',
+    backgroundColor: '#E8E5DE',
     margin: 4,
   },
   bigIcon: {

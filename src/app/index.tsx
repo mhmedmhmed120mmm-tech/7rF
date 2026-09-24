@@ -120,7 +120,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07111F',
+    backgroundColor: '#F4F2ED',
   },
   content: {
     paddingTop: 55,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#122235',
+    backgroundColor: '#E8E5DE',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   featured: {
-    backgroundColor: '#102A43',
+    backgroundColor: '#E1DDD4',
     borderWidth: 1,
     borderColor: '#1D4F73',
     borderRadius: 18,
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   featuredTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 19,
     fontWeight: '800',
   },
@@ -183,17 +183,17 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   roomButtonText: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontWeight: '800',
   },
   sectionTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 21,
     fontWeight: '800',
     marginBottom: 13,
   },
   countryCard: {
-    backgroundColor: '#0D1B2A',
+    backgroundColor: '#E7E4DC',
     borderRadius: 15,
     padding: 16,
     marginBottom: 10,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   countryName: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 17,
     fontWeight: '700',
   },
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '180deg' }],
   },
   totalCard: {
-    backgroundColor: '#0D1B2A',
+    backgroundColor: '#E7E4DC',
     borderRadius: 16,
     padding: 18,
     marginTop: 12,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 40,
-    backgroundColor: '#26384A',
+    backgroundColor: '#D4D0C7',
   },
   bottomBar: {
     position: 'absolute',
@@ -252,9 +252,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 78,
-    backgroundColor: '#0A1725',
+    backgroundColor: '#ECE9E2',
     borderTopWidth: 1,
-    borderTopColor: '#1B2D40',
+    borderTopColor: '#C9C4BA',
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',

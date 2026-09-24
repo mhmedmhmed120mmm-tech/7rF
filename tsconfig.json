@@ -25,6 +25,7 @@
     "**/*.current-backup.ts",
     "**/*.current-backup.tsx",
     "**/*.livekit-disabled-backup.ts",
-    "**/*.livekit-disabled-backup.tsx"
+    "**/*.livekit-disabled-backup.tsx",
+    "supabase/functions/**/*.ts"
   ]
 }

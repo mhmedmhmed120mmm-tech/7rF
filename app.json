@@ -37,7 +37,6 @@
       "expo-image",
       "expo-web-browser",
       "expo-audio",
-      "@config-plugins/react-native-webrtc",
       "expo-asset"
     ],
     "experiments": {

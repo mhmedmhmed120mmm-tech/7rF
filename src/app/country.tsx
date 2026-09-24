@@ -1,5 +1,8 @@
+import { useFocusEffect } from 'expo-router';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 const roomsByCountry: Record<string, string[]> = {
   العراق: ['العراق العامة', 'دردشة العراق', 'سوالف عراقية'],
@@ -15,7 +18,45 @@ export default function CountryRoomsScreen() {
   const params = useLocalSearchParams<{ country?: string }>();
 
   const country = params.country || 'الدولة';
-  const rooms = roomsByCountry[country] || [];
+  const [dynamicRooms, setDynamicRooms] = useState<string[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      const loadRooms = async () => {
+        const now = new Date().toISOString();
+
+        const { data, error } = await supabase
+          .from('rooms')
+          .select('name, country, expires_at, created_at, subscription_months')
+          .eq('country', country)
+          .gt('expires_at', now)
+          .order('created_at', { ascending: false });
+
+        if (!active) return;
+
+        if (error) {
+          console.log('load rooms error:', error);
+          setDynamicRooms([]);
+          return;
+        }
+
+        console.log('ROOMS FROM DB:', JSON.stringify(data, null, 2));
+        setDynamicRooms((data || []).map((room) => room.name));
+      };
+
+      loadRooms();
+
+      return () => {
+        active = false;
+      };
+    }, [country])
+  );
+
+  const rooms = Array.from(
+    new Set([...(roomsByCountry[country] || []), ...dynamicRooms])
+  );
 
   return (
     <View style={styles.container}>
@@ -70,7 +111,7 @@ export default function CountryRoomsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07111F',
+    backgroundColor: '#F4F2ED',
   },
   header: {
     height: 90,
@@ -81,11 +122,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   back: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 38,
   },
   title: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 20,
     fontWeight: '800',
   },
@@ -93,13 +134,13 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   sectionTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 22,
     fontWeight: '800',
     marginBottom: 15,
   },
   roomCard: {
-    backgroundColor: '#0D1B2A',
+    backgroundColor: '#E7E4DC',
     borderRadius: 15,
     padding: 17,
     marginBottom: 10,
@@ -111,7 +152,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   roomName: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 17,
     fontWeight: '700',
   },
@@ -126,7 +167,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '180deg' }],
   },
   empty: {
-    backgroundColor: '#0D1B2A',
+    backgroundColor: '#E7E4DC',
     borderRadius: 18,
     padding: 30,
     alignItems: 'center',
@@ -137,7 +178,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   emptyTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 17,
     fontWeight: '700',
   },

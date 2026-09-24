@@ -157,21 +157,21 @@ function SettingRow({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07111F',
+    backgroundColor: '#F4F2ED',
   },
   header: {
     height: 95,
     paddingTop: 40,
     paddingHorizontal: 16,
-    backgroundColor: '#0A1725',
+    backgroundColor: '#ECE9E2',
     borderBottomWidth: 1,
-    borderBottomColor: '#1B2D40',
+    borderBottomColor: '#C9C4BA',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   back: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 38,
   },
   headerInfo: {
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 19,
     fontWeight: '800',
   },
@@ -200,10 +200,10 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   card: {
-    backgroundColor: '#101D2D',
+    backgroundColor: '#DEDAD1',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     overflow: 'hidden',
   },
   option: {
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#1B2D40',
+    borderBottomColor: '#C9C4BA',
   },
   settingRow: {
     minHeight: 68,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#1B2D40',
+    borderBottomColor: '#C9C4BA',
   },
   optionIcon: {
     width: 38,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
   },
   optionTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'right',

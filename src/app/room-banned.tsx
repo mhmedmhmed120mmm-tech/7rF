@@ -71,23 +71,23 @@ export default function RoomBannedScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07111F',
+    backgroundColor: '#F4F2ED',
   },
 
   header: {
     height: 95,
     paddingTop: 40,
     paddingHorizontal: 16,
-    backgroundColor: '#0A1725',
+    backgroundColor: '#ECE9E2',
     borderBottomWidth: 1,
-    borderBottomColor: '#1B2D40',
+    borderBottomColor: '#C9C4BA',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
 
   back: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 38,
   },
 
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 19,
     fontWeight: '800',
   },
@@ -114,10 +114,10 @@ const styles = StyleSheet.create({
   },
 
   topCard: {
-    backgroundColor: '#101D2D',
+    backgroundColor: '#DEDAD1',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     padding: 16,
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
 
   topTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 15,
     fontWeight: '800',
     textAlign: 'right',
@@ -150,10 +150,10 @@ const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: '#101D2D',
+    backgroundColor: '#DEDAD1',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     overflow: 'hidden',
   },
 
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   },
 
   username: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 14,
     fontWeight: '700',
     textAlign: 'right',
@@ -193,9 +193,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
     height: 52,
     borderRadius: 12,
-    backgroundColor: '#101D2D',
+    backgroundColor: '#DEDAD1',
     borderWidth: 1,
-    borderColor: '#29415A',
+    borderColor: '#C2BDB3',
     flexDirection: 'row-reverse',
     alignItems: 'center',
     justifyContent: 'center',
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   },
 
   addText: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 14,
     fontWeight: '700',
   },

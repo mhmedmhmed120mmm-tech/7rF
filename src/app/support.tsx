@@ -48,7 +48,7 @@ export default function SupportScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#07111F',
+    backgroundColor: '#F4F2ED',
   },
 
   header: {
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
 
   headerTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 22,
     fontWeight: '800',
   },
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
 
   supportCard: {
     minHeight: 170,
-    backgroundColor: '#0D1B2A',
+    backgroundColor: '#E7E4DC',
     borderRadius: 22,
     padding: 24,
     alignItems: 'center',
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
 
   supportTitle: {
-    color: '#FFFFFF',
+    color: '#202020',
     fontSize: 22,
     fontWeight: '800',
   },
