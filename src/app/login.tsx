@@ -143,7 +143,7 @@ export default function LoginScreen() {
           .maybeSingle();
 
         if (profileError) {
-          Alert.alert('خطأ', 'تعذر الاتصال بقاعدة البيانات');
+          Alert.alert('خطأ قاعدة البيانات', profileError?.message || profileError?.details || profileError?.hint || 'خطأ غير معروف');
           return;
         }
 
@@ -298,7 +298,7 @@ export default function LoginScreen() {
 
         if (rankError) {
           console.error('Member login error:', rankError);
-          Alert.alert('خطأ', 'تعذر التحقق من بيانات العضو');
+          Alert.alert('خطأ قاعدة البيانات', rankError?.message || rankError?.details || rankError?.hint || 'خطأ غير معروف');
           return;
         }
 
@@ -380,8 +380,8 @@ export default function LoginScreen() {
     if (guestRankError) {
       console.error('Guest name check error:', guestRankError);
       Alert.alert(
-        'خطأ',
-        'تعذر التحقق من اسم الزائر'
+        'خطأ قاعدة البيانات',
+        guestRankError?.message || guestRankError?.details || guestRankError?.hint || 'خطأ غير معروف'
       );
       return;
     }
