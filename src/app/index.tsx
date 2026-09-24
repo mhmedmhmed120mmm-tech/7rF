@@ -33,7 +33,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.logo}>VrF</Text>
-            <Text style={styles.welcome}>مرحباً بك في مجتمع 7rF</Text>
+            <Text style={styles.welcome}>مرحباً بك في مجتمع VrF</Text>
           </View>
 
           <TouchableOpacity style={styles.profileButton}>
