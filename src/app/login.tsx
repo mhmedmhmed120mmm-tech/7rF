@@ -48,8 +48,8 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const { room, country } = useLocalSearchParams<{
-    room?: string;
-    country?: string;
+    room?: string | string[];
+    country?: string | string[];
   }>();
 
   const [type, setType] = useState<LoginType>('registered');
@@ -121,8 +121,8 @@ export default function LoginScreen() {
       return;
     }
 
-    const selectedRoom = room || '';
-    const selectedCountry = country || '';
+    const selectedRoom = Array.isArray(room) ? (room[0] ?? '') : (room ?? '');
+    const selectedCountry = Array.isArray(country) ? (country[0] ?? '') : (country ?? '');
     const enteredName = username.trim();
 
     // المالك 7rF: يدخل كل الغرف بصلاحيات المالك
@@ -139,6 +139,7 @@ export default function LoginScreen() {
           .from('profiles')
           .select('id,username,display_name,role,login_email')
           .eq('username', enteredName)
+          .limit(1)
           .maybeSingle();
 
         if (profileError) {
@@ -373,6 +374,7 @@ export default function LoginScreen() {
       .select('id,name')
       .eq('room_id', selectedRoom)
       .eq('name', enteredName.trim())
+      .limit(1)
       .maybeSingle();
 
     if (guestRankError) {
